@@ -1,0 +1,42 @@
+---
+title: "Assignment 1"
+format: html
+editor: visual
+---
+
+## Assignment 1
+
+The goal of this assignment more than anything is to orientate us students to the format in which our work will be submitted throughout the year. To accomplish this, I will be analyzing some raw data, creating some code blocks, and then using the appropriate channels (github, quarto document) to submit this document.
+
+The datasets I have chosen for this assignment look at harmful algal blooms (HABs) on Canandaigua Lake. It is an issue that is personal to me because I live by this lake and these toxic blooms pose a threat to humans and animals alike, and the issue is fairly new (since 2014). The tables selected have access to various lake sampling points, as well as counts of confirmations at these different points
+
+```{r} libraries}
+library(tidyverse)
+```
+
+```{r} load in csv}
+lake_coordinates <- read_csv("Canandaigua Lake(4).csv")
+lake_HAB <- read_csv("Canandaigua Lake(6).csv")
+```
+
+Going to do a join on these data tables because I do a decent bit of SQL at work and I like joins.
+
+```{r} create code block - bloom counts per zone}
+Lake_Zones <- inner_join(lake_coordinates, lake_HAB, by= "Location History ID")
+
+Lake_Zones |>
+  mutate(`Bloom Status` = "confirmed") |>
+  select(`Location Name`, `Sample Date`, `Bloom Status`) |>
+  count(`Location Name`, `Bloom Status`) |>
+  arrange(desc(n))
+```
+
+## Conclusions
+
+![](images/clipboard-4109605201.png){width="151"}
+
+It appears the Most frequent sightings of HABs are in Zone 5 and Zone 6, which is closer to the north end of the lake, about 5 miles from the north-most point of the lake. Perhaps this has to do something with the organic materials that run-off into the lake here from farms, or micronutrient makeup in this area, or if this area has a certain climate that spawns these HABs more frequently. To expand on this data dive, it would be interesting to develop a heat map on these coordinates, Tie in temperature data and look at this from a more annual scale, or tie in water nutrient concentrations correlated to invasive filter feeders (zebra mussels).
+
+Overall, this assignment was valuable to lay the land for future assignments. Having done the preliminary reading of "R for Data Science", I was excited to execute some of the items discussed in those chapters. The more difficult part of the assignment for me was getting all the scaffolding for everything set up. Trying to set up GitHub in R after a long day of work and minimal brain power was almost enough to have me flip my computer. Coming back to it later with a refreshed set of eyes, I was able to approach it much more level-headed. I feel that getting these things set up sometimes is the hardest part of getting into it at all.
+
+Lastly, this exercise was an interesting observation for myself of how I expect to learn in the post-AI world. I graduated from college in 2022 and have been using AI in my work since its release, mostly for vibe coding projects in Python and using it to teach myself SQL. The whole time, I felt it was an additive tool where if I had time and resources, I could use it to learn for myself, but in the absence of time I would use it to shortcut and ship ideas quicker. Coming into a classroom environment again, I noticed a sense of guilt when I went to the AI to help smooth out my work in the exercise. At times I felt it was giving me more than I should know at this point (based on the reading) and I focused on avoiding those tips or directly questioning them, but I still relied on AI during this exercise. In reflection of this assignment, I see my use of AI as a means to avoid the friction that comes from getting started in a field like this, where different errors can simply be attributed to rookie mistakes, and its easier to have an agent point it out quickly than it is to agonize and rip hair out to figure it out. Maybe there is merit to that method as well, but that is the whole crux isn't it?
