@@ -8,7 +8,9 @@ editor: visual
 
 The goal of this assignment more than anything is to orientate us students to the format in which our work will be submitted throughout the year. To accomplish this, I will be analyzing some raw data, creating some code blocks, and then using the appropriate channels (github, quarto document) to submit this document.
 
-The datasets I have chosen for this assignment look at harmful algal blooms (HABs) on Canandaigua Lake. It is an issue that is personal to me because I live by this lake and these toxic blooms pose a threat to humans and animals alike, and the issue is fairly new (since 2014). The tables selected have access to various lake sampling points, as well as counts of confirmations at these different points
+The datasets I have chosen for this assignment look at harmful algal blooms (HABs) on Canandaigua Lake. It is an issue that is personal to me because I live by this lake and these toxic blooms pose a threat to humans and animals alike, and the issue is fairly new (since 2014). The tables selected have access to various lake sampling points, as well as counts of confirmations at these different points.
+
+<https://extapps.dec.ny.gov/data/IF/CSLAP/0704CAN0286/2025_Lake_Report_Canandaigua%20Lake_0704CAN0286.html>
 
 ```{r} libraries}
 library(tidyverse)
