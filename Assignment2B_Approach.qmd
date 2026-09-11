@@ -1,0 +1,15 @@
+---
+title: "Assignment2B_Approach"
+format: html
+editor: visual
+---
+
+## Assignment 2B: Approach
+
+This assignment is an approach to Classification models using a dataset from a model that predicts the sex of a penguin based on various factors with varying levels of confidence. We will first look at the null error rate, which at this point I understand to be the amount of the majority class (male) over the total sample pool. Then we will look at the actual distribution of male and female penguins with a simple ggplot bar chart or something similar.
+
+Next, to apply our probability thresholds, we will look at the .pred_female values and use the various probability thresholds to categorize the different values as TP, FP, TN, or FN. I could see mutating 3 different columns for each sensitivity result would be a good way to go about this.
+
+Next, I will calculate accuracy, precision, recall, and f1 score for each sensitivity. I will refer to formulas from "Performance Metrics for Classification Problems in Machine Learning" to accomplish this task.
+
+Lastly, I will describe in what situations different tolerance thresholds were used. We had pretty good discussion on this in our Wednesday meetup, so I hope to come up with a good example for this.
