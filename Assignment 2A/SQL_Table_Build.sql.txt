@@ -1,0 +1,21 @@
+-- Table: public.Movies
+
+-- DROP TABLE IF EXISTS public."Movies";
+
+CREATE TABLE IF NOT EXISTS public."Movies"
+(
+    "Timestamp" text COLLATE pg_catalog."default",
+    "The Odyssey" text COLLATE pg_catalog."default",
+    "Dune 2" text COLLATE pg_catalog."default",
+    "Minecraft Movie" text COLLATE pg_catalog."default",
+    "Barbie" text COLLATE pg_catalog."default",
+    "Backrooms" text COLLATE pg_catalog."default",
+    "Five Nights at Freddys 2" text COLLATE pg_catalog."default",
+    """""" text COLLATE pg_catalog."default",
+    """""2" text COLLATE pg_catalog."default"
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public."Movies"
+    OWNER to postgres;

@@ -1,0 +1,84 @@
+---
+title: "Assignment2A_CodeBase"
+format: html
+editor: visual
+---
+
+## Assignment 2A
+
+The goal of this assignment is to get us familiar with use of SQL, and linking R to SQL. Preliminary work to this was creating a survey of movies for my friends to fill out, that I could then upload into a SQL database to do further work on. This survey contains ratings from 1-5 for all movies with an additional option to rate the movie as "did not see".
+
+## The Code
+
+For the SQL side of this work, I was able to use the postgres GUI to do all of my work, but I extrapolated the SQL from there. I created 3 different documents to hold the native SQL code that was executed behind the GUI.
+
+This was the query for building the table:
+
+"
+
+-- Table: public.Movies
+
+-- DROP TABLE IF EXISTS public."Movies";
+
+CREATE TABLE IF NOT EXISTS public."Movies" ( "Timestamp" text COLLATE pg_catalog."default", "The Odyssey" text COLLATE pg_catalog."default", "Dune 2" text COLLATE pg_catalog."default", "Minecraft Movie" text COLLATE pg_catalog."default", "Barbie" text COLLATE pg_catalog."default", "Backrooms" text COLLATE pg_catalog."default", "Five Nights at Freddys 2" text COLLATE pg_catalog."default", """""" text COLLATE pg_catalog."default", """""2" text COLLATE pg_catalog."default" )
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public."Movies" OWNER to postgres;
+
+"
+
+This was the Query for importing the data:
+
+"
+
+""\\copy public."Movies"("Timestamp", "The Odyssey", "Dune 2", "Minecraft Movie", "Barbie", "Backrooms", "Five Nights at Freddys 2", """""", """""2") FROM 'C:/Users/Nick/DOWNLO~1/UNTITL~1.CSV/UNTITL\~1.CSV' WITH(FORMAT csv, DELIMITER ',', QUOTE '"', ESCAPE '''');"""
+
+"
+
+This was the Query for exporting the data:
+
+"
+
+SELECT \* FROM public."Movies" LIMIT 100
+
+"
+
+I will then load that data into this file using R:
+
+```{r}
+Movies <- read.csv("Movies_raw.csv")
+```
+
+As you can see this data is pretty messy, so I'm going to clean it up a little before calling this done. I need to remove the first row and change the columns to not all say "the odyssey". weird anomaly from the google forms.
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+Movies <- Movies[-1,]
+
+```
+
+```{r}
+Movies <- rename(Movies,
+                "The Odyssey" = The.Odyssey..The.Odyssey.,
+                "Dune 2" = The.Odyssey..Dune.2.,
+                "Minecraft Movie" = The.Odyssey..Minecraft.Movie.,
+                "Barbie" = The.Odyssey..Barbie.,
+                "Backrooms" = The.Odyssey..Backrooms.,
+                "Five Nights at Freddys 2" = The.Odyssey..Five.Nights.at.Freddy.s.2.)
+
+
+```
+
+```{r}
+Movies <- Movies |>
+  select(Timestamp, `The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`)
+Movies
+```
+
+## Conclusion
+
+Overall, This assignment was fairly straightforward mainly due to the use of postgres's user friendly GUI. This allowed me to have a low code/no code approach to importing and exporting data, but for this assignment it is still valuable to know what's happening on the back end to allow that. I did not directly connect to SQL from this R document as you can see above, but I was able to import the .csv, and I included the raw SQL above for how you would do this if you were connected.
