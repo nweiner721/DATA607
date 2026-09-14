@@ -1,0 +1,9 @@
+---
+title: "Assignment 2A"
+format: html
+editor: visual
+---
+
+## Assignment 2A: Approach
+
+Assignment 2A requires us to interface with SQL as a means of building a database that we would then theoretically use for a predictor program. I have used google forms to collect my data and I actually already received 11 responses from sending this out to friends! I will download my responses as csv and use that as the base data to build out my SQL database. following this, I will attempt to load it directly into my R if everything handshakes the way I want it to, and if not I will go instead save it as a .csv and load this into my R script. I am excited to do some light compiling of the ratings and get averages because I am curious what this says about my friends' taste. One thing I'm realizing I will need to overcome is that not all of my values are integers, as i used ratings of 1, 3, and 5 to say "bad", "ok", and "amazing" respectively. excited to overcome this obstacle.

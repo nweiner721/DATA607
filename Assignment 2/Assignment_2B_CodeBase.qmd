@@ -1,0 +1,180 @@
+---
+title: "Assignment_2B"
+format: html
+editor: visual
+execute:
+  echo: true
+---
+
+## Assignment 2B
+
+This assignment is focused on classification models, particularly for predicting penguin sexes. We are not yet looking at how these kinds of models are created, but rather the outputs of them and how to understand the performance metrics technically, as well as their real-world business applications.
+
+## The Code
+
+First I will load in my packages and the .csv for this assignment.
+
+```{r}
+#| echo: false 
+library("tidyverse")
+penguin_model <- read.csv("penguin_predictions.csv")
+```
+
+Let's take a look at that data.
+
+```{r}
+glimpse(penguin_model)
+```
+
+Right now the format of the numbers is messy, i would like it to just show me the percents so I'm going to round for 2 decimal points.
+
+```{r}
+penguin_model <- penguin_model |>
+  mutate(.pred_female = round(.pred_female, digits = 2))
+glimpse(penguin_model)
+```
+
+Much more readable now.
+
+After some trial and error with researching how to add percentage labels on a graph, I eventually sorted it with the aid of an LLM. I collapsed my table with count(), and then added percentages to then put on the graph as labels.
+
+```{r}
+
+penguin_graph <- penguin_model |>
+  count(sex) |>
+  mutate(perc = n/sum(n))
+
+ggplot(penguin_graph, aes(x = sex, y = n, fill = sex)) +
+  geom_col() + 
+  geom_text(aes(label = scales::percent(perc,accuracy=1))) +
+  labs(title = "Class Distribution", y = "Count" , x = "Sex")
+  
+```
+
+This gives us our baseline for prediction, and we can use this to establish our null error rate. The null error rate is the simplest prediction model and it predicts entirely based on which of the classes is in the majority. This will serve as our baseline prediction model to benchmark against.
+
+```{r}
+Null_Error_Rate = 1 - .58
+Null_Error_Rate
+```
+
+Now to move into our prediction models, We are looking at the models performances based on the different probability thresholds. These probability thresholds provide us with a confidence value, which in the real world is usually determined by business case.
+
+Below was my first shot before realizing I was looking at the problem wrong. I see now that you use the thresholds to create new ".pred_class" columns and then use those with logic to calculate the matrices.
+
+```{r}
+penguin_model <- penguin_model |>
+mutate(Threshold_Results_0.8 = case_when(
+  .pred_female > 0.8 & .pred_class == "female" & .pred_class == sex ~ "TP",
+  .pred_female < 0.8 & .pred_class == "male" & .pred_class == sex ~ "TN",
+  .pred_female > 0.8 & .pred_class == "female" & .pred_class != sex ~ "FP",
+  .pred_female < 0.8 & .pred_class == "male" & .pred_class != sex ~ "FN",)
+  ) |>
+  mutate(Threshold_Results_0.5 = case_when(
+    .pred_female > 0.5 & .pred_class == "female" & .pred_class == sex ~ "TP",
+    .pred_female < 0.5 & .pred_class == "male" & .pred_class == sex ~ "TN",
+    .pred_female > 0.5 & .pred_class == "female" & .pred_class != sex ~ "FP",
+    .pred_female < 0.5 & .pred_class == "male" & .pred_class != sex ~ "FN",)
+  ) |>
+  mutate(Threshold_Results_0.2 = case_when(
+    .pred_female > 0.2 & .pred_class == "female" & .pred_class == sex ~ "TP",
+    .pred_female < 0.2 & .pred_class == "male" & .pred_class == sex ~ "TN",
+    .pred_female > 0.2 & .pred_class == "female" & .pred_class != sex ~ "FP",
+    .pred_female < 0.2 & .pred_class == "male" & .pred_class != sex ~ "FN",)
+  ) 
+  
+```
+
+Leaving that failed code for posterity, I will now do this the correct way.
+
+```{r}
+penguin_model_0.8 <- penguin_model |>
+  mutate(.pred_class_0.8 = ifelse(.pred_female > .8, "female","male")) |>
+  mutate(threshold_results_.8 = case_when(
+    .pred_class_0.8 == "female" & .pred_class_0.8 == sex ~ "TP",
+    .pred_class_0.8 == "male" & .pred_class_0.8 == sex ~ "TN",
+    .pred_class_0.8 == "female" & .pred_class_0.8 != sex ~ "FP",
+    .pred_class_0.8 == "male" & .pred_class_0.8 != sex ~ "FN",)
+  ) |>
+  select(.pred_female, .pred_class_0.8, sex, threshold_results_.8)
+
+penguin_model_0.5 <- penguin_model |>
+  mutate(.pred_class_0.5 = ifelse(.pred_female > .5, "female","male")) |>
+  mutate(threshold_results_.5 = case_when(
+    .pred_class_0.5 == "female" & .pred_class_0.5 == sex ~ "TP",
+    .pred_class_0.5 == "male" & .pred_class_0.5 == sex ~ "TN",
+    .pred_class_0.5 == "female" & .pred_class_0.5 != sex ~ "FP",
+    .pred_class_0.5 == "male" & .pred_class_0.5 != sex ~ "FN",)
+  ) |>
+  select(.pred_female, .pred_class_0.5, sex, threshold_results_.5)
+
+penguin_model_0.2 <- penguin_model |>
+  mutate(.pred_class_0.2 = ifelse(.pred_female > .2, "female","male")) |>
+  mutate(threshold_results_.2 = case_when(
+    .pred_class_0.2 == "female" & .pred_class_0.2 == sex ~ "TP",
+    .pred_class_0.2 == "male" & .pred_class_0.2 == sex ~ "TN",
+    .pred_class_0.2 == "female" & .pred_class_0.2 != sex ~ "FP",
+    .pred_class_0.2 == "male" & .pred_class_0.2 != sex ~ "FN",)
+  ) |>
+  select(.pred_female, .pred_class_0.2, sex, threshold_results_.2)
+
+
+```
+
+```{r}
+confmat_.8 <- penguin_model_0.8 |>
+  count(threshold_results_.8)
+
+confmat_.5 <-penguin_model_0.5 |>
+  count(threshold_results_.5)
+
+confmat_.2 <-penguin_model_0.2 |>
+  count(threshold_results_.2)
+```
+
+Using these new tables, we will generate Performance metrics for each of these thresholds. I wanted to do this through a data pipeline rather than manually inputting, so I relied on some guidance from LLM.
+
+I created a function to define each of the values we are looking for (accuracy, precision, recall, and F1), I pivot the existing tables and then execute the defined function below, which I could then join into one table.
+
+```{r}
+calc_metrics <- function(tp, tn, fp, fn) {
+  tibble(
+    accuracy  = (tp + tn) / (tp + tn + fp + fn),
+    precision = tp / (tp + fp),
+    recall    = tp / (tp + fn),
+    f1        = 2 * (precision * recall) / (precision + recall)
+  )
+}
+```
+
+```{r}
+confmat_.8 <- confmat_.8 |>
+  pivot_wider(names_from = threshold_results_.8, values_from = n) |>
+  mutate(calc_metrics(TP, TN, FP, FN))
+
+confmat_.5 <- confmat_.5 |>
+  pivot_wider(names_from = threshold_results_.5, values_from = n) |>
+  mutate(calc_metrics(TP, TN, FP, FN))
+
+confmat_.2 <- confmat_.2 |>
+  pivot_wider(names_from = threshold_results_.2, values_from = n) |>
+  mutate(calc_metrics(TP, TN, FP, FN))
+```
+
+```{r}
+
+finalresult <- bind_rows(
+  threshold_08 = confmat_.8,
+  threshold_05 = confmat_.5,
+  threshold_02 = confmat_.2,
+  .id = "threshold"
+  )
+  
+finalresult
+```
+
+## Conclusions
+
+This shows that for us, the 0.8 threshold scores highest on these model tests, but the 0.2 threshold has the most TP's and least FN's. There are use cases for both thresholds and it ultimately depends on the business case. Take for example a camera model for tomato processing. There is a camera on a manufacturing line that looks at a tomatoes quality, and based on a predictive model of quality, it will remove tomatoes that test positive. In a regular setting, you would want to keep the threshold high and reject less because you dont want to lose money from too many rejects. However, assume in an alternate world these tomatoes that need to be rejected are poisonous and will harm consumers if they make it past. In this case, you want to lower the threshold to promote more rejects, to ensure no dangerous tomatoes are making it to the market.
+
+This assignment was a great exercise in building more complex narratives in R and tying in some machine learning principles along the way. I am enjoying these assignments and building confidence in R with every one!
