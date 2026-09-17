@@ -1,0 +1,10 @@
+---
+title: "Assignment_3A_Approach"
+format: html
+editor: visual
+author: Nick Weiner
+---
+
+## Approach
+
+For this assignment, we are building on top of the assignment we submitted last week and using it to generate a global baseline. We are being asked to mirror the attached excel document but do so in R. This global baseline algorithm utilizes means, both user specific means and movie specific means to generate predictions. I will use this to generate at least one predicted rating for a user who hadn't seen a movie.
