@@ -1,0 +1,10 @@
+---
+title: "3B_Approach"
+format: html
+editor: visual
+author: Nick Weiner
+---
+
+## Approach
+
+This exercise looks at window functions, which are methods of making generalizations about your data without collapsing your rows. This is a good way of looking at data that changes over time, and being able to generate deltas, or look at each row in relation to a generalized value for that data. For this exercise, I will likely look to use some kind of weather data because weather changes every day and it is a very broad category that allows for different things to be looked at within. This is a very open ended assignment and it aligns with a lot of the work I do at work in my manufacturing facility. I expect to be challenged in learning how these functions work in R versus something like excel or vibe coded python, but I look forward to developing those skills.
