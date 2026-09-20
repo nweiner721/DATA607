@@ -2,25 +2,96 @@
 title: "3A_CodeBase"
 format: html
 editor: visual
+echo: true
 ---
 
-## Quarto
+## Assignment 3A
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+The goal of this assignment is to get us familiar with use of SQL, and linking R to SQL. Preliminary work to this was creating a survey of movies for my friends to fill out, that I could then upload into a SQL database to do further work on. This survey contains ratings from 1-5 for all movies with an additional option to rate the movie as "did not see".
 
-## Running Code
+## The Code
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-1 + 1
-```
-
-You can add options to executable code like this
+First I'll load in tidyverse.
 
 ```{r}
-#| echo: false
-2 * 2
+
+
+library("tidyverse")
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Then I want to read the raw .csv again.
+
+```{r}
+Movies <- read.csv("Movies_raw.csv")
+Movies
+```
+
+Remove the one erroneous row in there.
+
+```{r}
+Movies <- Movies[-1,]
+```
+
+And rename the columns before I do any meaningful manipulation.
+
+```{r}
+Movies <- rename(Movies,
+                 "The Odyssey" = The.Odyssey..The.Odyssey.,
+                 "Dune 2" = The.Odyssey..Dune.2.,
+                 "Minecraft Movie" = The.Odyssey..Minecraft.Movie.,
+                 "Barbie" = The.Odyssey..Barbie.,
+                 "Backrooms" = The.Odyssey..Backrooms.,
+                 "Five Nights at Freddys 2" = The.Odyssey..Five.Nights.at.Freddy.s.2.) 
+```
+
+Now I will generate the average values that were seen in the example excel. We are looking to generate an average of each column per row, and then an average of each row per column. This will allow us to build out the rest of the values for our global baseline estimate model. To do this I will mutate the original table and use rowwise() in order to get means per row, and then I will create a new dataframe, ungroup it, and find the column-based averages using summarize().
+
+```{r}
+Movies[Movies == "5 - Amazing"] <- "5" 
+Movies[Movies == "3 - Ok"] <- "3" 
+Movies[Movies == "1 - Bad"] <- "1" 
+Movies[Movies == "did not see"] <- ""
+
+Movies <- Movies |>
+  select(Timestamp, `The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`) |>
+ mutate(across(c(Timestamp, `The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`), as.integer)) |>
+  rowwise() |>
+  mutate(User_Avg = mean(c(`The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`),na.rm = TRUE))
+
+Movie_Ratings_Avg <- Movies |>
+  select(`The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`, User_Avg) |>
+  ungroup() |>
+  summarize(across(c(`The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`, User_Avg),
+                   \(x) mean(x, na.rm = TRUE)))
+  
+  
+```
+
+Now to build out the Global Baseline Estimate. For this we are going to look at Index = 1, and determine their rating of the movie "Backrooms". We will call this Submitter 1.
+
+![Submitter 1 has seen all the other movies. We will calculate what his rating for Backrooms would be by starting with the Mean movie rating of all movies, and then using both the Backrooms rating relative to average and Submitter 1's ratings relative to average in order to triangulate the guessed value. I first need to get the adjusted averages](images/clipboard-3734814860.png)
+
+```{r}
+Movies <- Movies |>
+  mutate(User_Avg_Mean_Movie = User_Avg - 3.151667)
+
+Movie_Ratings_Avg_Mean_Movie <- Movie_Ratings_Avg |>
+  summarize(across(c(`The Odyssey`, `Dune 2`, `Minecraft Movie`, Barbie, Backrooms, `Five Nights at Freddys 2`, User_Avg),
+                 \(x)  x - 3.151667))
+```
+
+Now we will use these to calculate Submitter 1's rating for "Backrooms".
+
+Global Baseline Estimate = Mean Movie Rating + Backrooms rating relative to average + Submitter 1's rating relative to average
+
+```{r}
+Submitter1_Backrooms_Score = Movie_Ratings_Avg[,7] + Movies[1, 9] + Movie_Ratings_Avg_Mean_Movie[,5]
+
+Submitter1_Backrooms_Score
+```
+
+## Conclusion
+
+As you can see from these calculations, This submitters backrooms score came back to be 3.79. This uses the Mean movie Rating (3.15) as a starting point, which then is augmented by the deviance of other ratings for that column, and the deviance of that users rankings versus the average. This cleverly uses the data present to generate a best guess for the rating.
+
+To expand on this model would be to integrate more automation and apply the logic to all blanks. I could see a means of calculating for all "NA's" in the table, and it may make it easier to compile all the data in the same table rather than segmented into 3-4 like mine. With all the data in one place it would be easier to automate the calculation for the hypothetical rankings.
