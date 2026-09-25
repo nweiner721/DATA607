@@ -1,0 +1,33 @@
+---
+title: "Project1_CodeBase"
+output: html_document
+date: "2026-09-24"
+author: "Nick Weiner"
+---
+
+## R Markdown
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+## R Markdown
+
+```{r cars}
+Chess_Data <- read.delim("tournamentinfo.txt", header = FALSE, sep = "|")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+Chess_Data_Clean  <- Chess_Data |>
+  filter(V1 != "-----------------------------------------------------------------------------------------") |>
+  mutate(index = row_number())
+
+Chess_Data_Filter1 <- Chess_Data_Clean |>
+  filter(index = ()
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

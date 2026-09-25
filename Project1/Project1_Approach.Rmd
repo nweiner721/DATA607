@@ -1,0 +1,11 @@
+---
+title: "Project 1 Approach"
+output: html_document
+date: "2026-09-24"
+author: "Nick Weiner"
+---
+
+## Project 1 Approach
+Looking at the document for this project, I feel the hardest part will be getting the information from the text file into some kind of data pipeline. It seems to not follow any sort of comma separation principle, so I will have to experiment with how to better extract the data. Perhaps even though it is a text document I can beat my head against it with read_csv until I get something that works well. I feel that once the data is in a more workable format, the rest of the project will come together. 
+
+I plan to beat my head against it with code before trying any LLM approaches because I feel like LLM's approach situations like this really well, but I want to understand fundamentally what needs to be done to pull data out of a weird format like this. Perhaps it is naive but I feel like the rest of the assignment will be simple once the data is extracted from its current document. Im thinking use the "|" as a separating value first, and then use that as the baseline. Maybe I will be able to mutate or trim data from that. 
