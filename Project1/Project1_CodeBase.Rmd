@@ -5,29 +5,137 @@ date: "2026-09-24"
 author: "Nick Weiner"
 ---
 
-## R Markdown
+## Introduction
+
+The first big project! This project is centered around cleaning up a nonstandard set of data, particularly one for chess tournament results. I am expected to create a organize some of the data that is already in this table as well as generate averages of each player's opponent ranking. What's left will be a consise look into who the players are, how they did in the tournament, and the average opponent they faced.
+
+Some of the challenges I expect with this assignment are the cleaning of the data format as well as the augmentation of the columns in order to get the average opponent ranking. This will be a true test of some of the skills we have learned so far in this class, as well as apply new principles in order to clean values or match rows based on column values.
+
+## The Code
+
+I approached this data entirely in R, while I could see a path to solving this problem using SQL as well.
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(knitr)
 ```
 
-## R Markdown
+First we will load in the .txt as is and see what we can do to start chipping away at it. after struggling through read.csv, read_csv, and other similar functions, I found that read.delim was the option that produced the best data load-in, and using "|" as the delimiter allowed us to get a rough graph to start.
 
 ```{r cars}
 Chess_Data <- read.delim("tournamentinfo.txt", header = FALSE, sep = "|")
+
+glimpse(Chess_Data)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
+As you can see, the data, while now imported into R, is very much in need of some cleaning. we have rows that provide no value, and a lot of data with no strong corresponding columns. I noticed a pattern where after removing the "-----..." rows, there were different data sets on the even and odd rows. I added an index and used this along with a modulo operator (%), which allows you to use the remainder as a filtering condition. ThiS along with some other polishing I was able to get two tables that hold different sets of data we will need to complete the finished product.
 
 ```{r pressure, echo=FALSE}
 Chess_Data_Clean  <- Chess_Data |>
   filter(V1 != "-----------------------------------------------------------------------------------------") |>
-  mutate(index = row_number())
+  mutate(index = row_number()) 
 
-Chess_Data_Filter1 <- Chess_Data_Clean |>
-  filter(index = ()
+Chess_Data_Even <- Chess_Data_Clean |>
+  filter(index %% 2 == 0) |>
+  rename( Area = V1,
+          Rating = V2) |>
+  select(!index) |>
+  select(Area, Rating) |>
+  slice(-1) |>
+  mutate(index = row_number()) 
+
+glimpse(Chess_Data_Even)
+
+Chess_Data_Odd <- Chess_Data_Clean |>
+  filter(index %% 2 == 1) |>
+  rename(Rank = V1,
+         Name = V2,
+         Points = V3,
+         R1 = V4,
+         R2 = V5,
+         R3 = V6,
+         R4 = V7,
+         R5 = V8,
+         R6 = V9,
+         R7 = V10) |>
+  select(!index) |>
+  select(!V11) |>
+  slice(-1) |>
+  mutate(index = row_number()) 
+  
+glimpse(Chess_Data_Odd)  
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Now that I have both of these tables, I will join them together and start cleaning the values within the tables, particularly the Elo and the Round results. I need these to be integers so that they can be manipulated. There is one caveat to this that I will go into later, and I still don't fully understand it. 
+
+```{r}
+Full_Clean_Data <- full_join(Chess_Data_Even,Chess_Data_Odd) 
+
+glimpse(Full_Clean_Data)
+
+Full_Clean_Data2 <- Full_Clean_Data |>
+  mutate(
+    across(
+      c(R1, R2, R3, R4, R5, R6, R7),
+         ~str_remove_all(.x, "W|L|D")
+      )
+  ) |>
+    mutate(
+    across(
+      c(R1, R2, R3, R4, R5, R6, R7, Rank),
+      ~as.integer(.x)
+    )
+  ) |>
+  mutate(
+    Rating = str_remove(Rating, ".*:"),
+    Rating = str_remove(Rating, "-.*"),
+    Rating = str_remove(Rating, "P.*")
+  )
+
+glimpse(Full_Clean_Data2)
+```
+
+
+Now here is where I really hit a roadblock with this assignment. My next goal was to use the cleaned up match results to pull in the Elo of the player they played in order to eventually generate an average. I am well aware of xlookup in excel, but trying to figure out how to get an operation that mirrors it in R was quite difficult for me. Through searching around and attempting different joins, I found that the most effective method of getting these was to use a more native solution through Rating[match(Rank from Match, Rank of player they played)]. 
+
+The Caveat I described above was that this match function would not work if the RX values were integers. I have no Idea why this was the case but I rolled with it, and my work around was to just convert them after the match function. 
+
+With these data points matched, I was able to calculate the newest column that finds the average opponent Elo. Thanks to assignment 3A I had the know-how of using rowwise() to get accurate averages for each row. With this being done, all that was needed was a little bit of cleaning, and then I was done!
+
+```{r}
+Chess_Data_Joins <- Full_Clean_Data2 |>
+  select(!index) |>
+  mutate(R1elo = Rating[match(R1, Rank)],
+         R2elo = Rating[match(R2, Rank)],
+         R3elo = Rating[match(R3, Rank)],
+         R4elo = Rating[match(R4, Rank)],
+         R5elo = Rating[match(R5, Rank)],
+         R6elo = Rating[match(R6, Rank)],
+         R7elo = Rating[match(R7, Rank)]) |>
+      mutate(
+    across(
+      c(R1elo, R2elo, R3elo, R4elo, R5elo, R6elo, R7elo),
+      ~as.integer(.x)
+    )
+  ) |>
+  rowwise() |>
+  mutate(Opponent_Avg_Elo = mean(
+      c(R1elo, R2elo, R3elo, R4elo, R5elo, R6elo, R7elo
+      )
+      , na.rm = TRUE)) |>
+  relocate(Name, Area, Points, Rating, Opponent_Avg_Elo) |>
+  arrange(Rank) |>
+  select(Name, Area, Points, Rating, Opponent_Avg_Elo) |>
+  mutate(Opponent_Avg_Elo = round(Opponent_Avg_Elo, digits = 0))
+  
+   kable(Chess_Data_Joins)
+```
+
+## Conclusion
+
+In conclusion,  this was a well rounded test of being able clean non-standard data formats. After spending the first few weeks of this class focused on the basics of the different IDE's and the building blocks of R writing, this assignment allowed me to bring everything together while still learning new critical skills for building. I was able to take the raw data, convert it to a readable and workable format, and then apply further logic to use the existing data to generate new data. 
+
+The areas I expected to be the most difficult ended up working out to be some of the simpler problems. For example, the actual reading of the document and being able to separate the data into two working tables I thought would take a lot longer to do. The hardest part for me was the generating of the average and understanding the best way to join tables. There are a lot of different joins and matches, and knowing which ones to use for which situation is difficult initially. also, I am not as comfortable with native R functions as I am with tidyverse functions, so I always feel less confident resorting to a native function to solve a problem. 
+
+In thinking about what could be done differently or what could be improved I can think of two things. One, I think there is room for some of this data manipulation to be done in SQL in potentially a more concise manner. Although more concise, it would also require an added layer of uploading the data to SQL and then exporting back out. Second, I think there is room to optimize the code. A lot of my code for this assignment was scrappy, and I feel that there are better ways to apply functions over a range of data differently and more compact than I did. I also think I could get more done within a function than I do now, such as taking care of multiple mutations under the same function. As I continue to figure out how everything interacts within the R language I feel more comfortable performing operations independent of eachother, but I know ultimately there are ways to make it neater and more concise. 
