@@ -1,0 +1,171 @@
+---
+title: "Assignment 5B"
+output: html_document
+date: "2026-10-4"
+author: "Nick Weiner"
+echo: True
+---
+
+## Introduction
+
+This assignment is a continuation of the last assignment of chess tournament data. The goal of this assignment however is to use the ELO ranking formula to generate these different player's algorithmically projected scores, and for us to see who did the best and who did the worst. It is a further exercise in cleaning and organizing data, as well as building on top of previous exercises. There were some obstacles that have come up from this that I will go into a little more detail in the body of this assignment.
+
+## The Code
+
+I stole my original code from the first assignment and used it heavily to discern the data.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(knitr)
+```
+
+First we will load in the .txt as is and see what we can do to start chipping away at it. after struggling through read.csv, read_csv, and other similar functions, I found that read.delim was the option that produced the best data load-in, and using "|" as the delimiter allowed us to get a rough graph to start.
+
+```{r cars}
+Chess_Data <- read.delim("tournamentinfo.txt", header = FALSE, sep = "|")
+
+glimpse(Chess_Data)
+```
+
+More cleaning from the previous assignment. 
+```{r pressure, echo=FALSE}
+Chess_Data_Clean  <- Chess_Data |>
+  filter(V1 != "-----------------------------------------------------------------------------------------") |>
+  mutate(index = row_number()) 
+
+Chess_Data_Even <- Chess_Data_Clean |>
+  filter(index %% 2 == 0) |>
+  rename( Area = V1,
+          Rating = V2) |>
+  select(!index) |>
+  select(Area, Rating) |>
+  slice(-1) |>
+  mutate(index = row_number()) 
+
+glimpse(Chess_Data_Even)
+
+Chess_Data_Odd <- Chess_Data_Clean |>
+  filter(index %% 2 == 1) |>
+  rename(Rank = V1,
+         Name = V2,
+         Points = V3,
+         R1 = V4,
+         R2 = V5,
+         R3 = V6,
+         R4 = V7,
+         R5 = V8,
+         R6 = V9,
+         R7 = V10) |>
+  select(!index) |>
+  select(!V11) |>
+  slice(-1) |>
+  mutate(index = row_number()) 
+  
+glimpse(Chess_Data_Odd)  
+
+```
+
+Last chunk of data from project 1 before I added more for this assignment. Getting data joined, values cleaned, etc.
+
+```{r}
+Full_Clean_Data <- full_join(Chess_Data_Even,Chess_Data_Odd) 
+
+glimpse(Full_Clean_Data)
+
+Full_Clean_Data2 <- Full_Clean_Data |>
+  mutate(
+    across(
+      c(R1, R2, R3, R4, R5, R6, R7),
+         ~str_remove_all(.x, "W|L|D")
+      )
+  ) |>
+    mutate(
+    across(
+      c(R1, R2, R3, R4, R5, R6, R7, Rank),
+      ~as.integer(.x)
+    )
+  ) |>
+  mutate(
+    Rating = str_remove(Rating, ".*:"),
+    Rating = str_remove(Rating, "-.*"),
+    Rating = str_remove(Rating, "P.*")
+  )
+
+glimpse(Full_Clean_Data2)
+```
+```{r}
+Chess_Data_Joins <- Full_Clean_Data2 |>
+  select(!index) |>
+  mutate(R1elo = Rating[match(R1, Rank)],
+         R2elo = Rating[match(R2, Rank)],
+         R3elo = Rating[match(R3, Rank)],
+         R4elo = Rating[match(R4, Rank)],
+         R5elo = Rating[match(R5, Rank)],
+         R6elo = Rating[match(R6, Rank)],
+         R7elo = Rating[match(R7, Rank)]) |>
+      mutate(
+    across(
+      c(R1elo, R2elo, R3elo, R4elo, R5elo, R6elo, R7elo),
+      ~as.integer(.x)
+    )
+  ) |>
+  rowwise() |>
+  mutate(Opponent_Avg_Elo = mean(
+      c(R1elo, R2elo, R3elo, R4elo, R5elo, R6elo, R7elo
+      )
+      , na.rm = TRUE)) |>
+  relocate(Name, Area, Points, Rating, Opponent_Avg_Elo) |>
+  arrange(Rank) |>
+  select(Name, Area, Points, Rating, Opponent_Avg_Elo) |>
+  mutate(Opponent_Avg_Elo = round(Opponent_Avg_Elo, digits = 0))
+  
+```
+
+Now for the new calculations below. I first got everything in the right format as integers, then I created new fields for probability, predicted score, and difference. The ELO formula I used was from "The Elo Rating System for Chess and Beyond" by singingbanana on Youtube. the big issue I encountered with this is that my original data did not decode the different chess tournament match outcomes such as B, U, H, and X. These returned as NA's and I chose to keep them as NA for the sake of this exercise. I will go over more in the conclusion of what could be done to remediate these.
+
+With the newly calculated ratings, I took the differences of these with the player's actual scores to show who over and under performed.
+```{r}
+Chess_Data_Elo <- Full_Clean_Data2 |>
+  select(!index) |>
+  mutate(R1elo = Rating[match(R1, Rank)],
+         R2elo = Rating[match(R2, Rank)],
+         R3elo = Rating[match(R3, Rank)],
+         R4elo = Rating[match(R4, Rank)],
+         R5elo = Rating[match(R5, Rank)],
+         R6elo = Rating[match(R6, Rank)],
+         R7elo = Rating[match(R7, Rank)]) |>
+      mutate(
+    across(
+      c(R1elo, R2elo, R3elo, R4elo, R5elo, R6elo, R7elo, Rating, Points),
+      ~as.integer(.x)
+    )) |>
+  rowwise() |>
+  mutate(R1prob = 1/(1 + 10^((R1elo - Rating)/400)),
+         R2prob = 1/(1 + 10^((R2elo - Rating)/400)),
+         R3prob = 1/(1 + 10^((R3elo - Rating)/400)),
+         R4prob = 1/(1 + 10^((R4elo - Rating)/400)),
+         R5prob = 1/(1 + 10^((R5elo - Rating)/400)),
+         R6prob = 1/(1 + 10^((R6elo - Rating)/400)),
+         R7prob = 1/(1 + 10^((R7elo - Rating)/400)),
+         Predicted_Score = sum(across(c(R1prob,R2prob,R3prob,R4prob,R5prob,R6prob,R7prob)), na.rm = TRUE),
+         Difference = round((Points - Predicted_Score), digits = 2)
+)|>
+  arrange(desc(Difference)) |>
+  select(!R1:R7prob)
+```
+
+For a bit more of a zoom in:
+```{r}
+head(Chess_Data_Elo)
+tail(Chess_Data_Elo)
+```
+
+
+
+## Conclusion
+
+The ELO calculation is more intuitive than you would originally think, given that the probability of winning then becomes the points that you can use for theoretical placings of different players. There is no roundabout way to have to extrapolate the score past that point and I think that is a testament to how effective and popular of a rating style the Elo method is. 
+
+For how this assignment played out, it was nice to work more with this set of data as I thought it was inherently very interesting. I enjoy chess myself, so seeing how tournaments count scores and diving into the mechanics of those rankings was very neat for me. As I mentioned earlier, the one gap left open for me with this assignment is those NA values. What I would have to do to fix these is go back and assign a set value for the different U, X, B, H, for which some are assumed to be .5 and some are assumed to be 0. This could have an impact on the top and bottom 5 performers, but upon visual inspection it didn't effect the top players as much as it did the lower ranks. 
+
+From my data, players like Aditya Bajaj, Anvit Rao, Jacob Lavalley, Stefano Lee, and Zachary Houghton has outstanding performances, while Loren Schwiebert, George Jones , Rishi Shetty, Jared Ge, and Joshua Lee were upset in the tournament.
