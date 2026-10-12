@@ -1,0 +1,48 @@
+---
+title: "Project2_Dataset2"
+format: html
+editor: visual
+author: Nick Weiner
+echo: True
+---
+
+## Introduction
+
+For Project 2, our objective is to make 3 different ELT pipelines for 3 different wide-format .csv files.
+
+For this set of data, I am looking at Landfill emissions. Particularly, I would like to dive deeper into Emission reduction statistics per state.
+
+## The Code
+
+```{r}
+library(knitr)
+library(tidyverse)
+library(lubridate)
+```
+
+I will load in my .csv of Emissions data from December 2019.
+
+```{r}
+Landfill <- read.csv("2019Dec_lmopdata.xlsx - LMOP Database.csv")
+```
+
+I first want to remove a lot of columns that don't add value to my analysis, then I would like to rename and pivot the data to be longer
+
+```{r}
+Landfill1 <- Landfill |>
+  drop_na(Actual.MW.Generation:Current.Year.Emission.Reductions..MMTCO2e.yr....Avoided) |>
+  select(-c(1,2,5,7,8,9,10,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28))|>
+  rename(
+    "Emissions_Reduction_Avoided_MMTCO2E" = "Current.Year.Emission.Reductions..MMTCO2e.yr....Avoided",
+    "Emissions_Reduction_Direct_MMTCO2E" = "Current.Year.Emission.Reductions..MMTCO2e.yr....Direct",
+  ) |>
+  pivot_longer(LFG.Collected..mmscfd.:Emissions_Reduction_Avoided_MMTCO2E)
+```
+
+Now that I have the data in this format, I would like to group by state, and calculate the sum of emissions direct & avoided data, and graph it all out for a visual comparison of the different states. Unforutnately this is as far as I could get before I reach midnight on 10/11, so I will stop here. If I can submit and commit past the submission time, I will finish the assignment.
+
+```{r}
+
+```
+
+Landfill2 \<- Landfill1 \|\> group_by(State) \|\> filter(name == c(Emissions_Reduction_Direct_MMTCO2E, Emissions_Reduction_Avoided_MMTCO2E)) summarize(Emissions_Reduction_Avoided = sum(name, na.rm = TRUE), Emissions_Reduction_Direct = sum(Emissions_Reduction_Direct_MMTCO2E, na.rm = TRUE))

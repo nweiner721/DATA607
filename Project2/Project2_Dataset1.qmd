@@ -1,0 +1,150 @@
+---
+title: "Project 2 Dataset 1"
+format: html
+editor: visual
+author: Nick Weiner
+echo: true
+---
+
+## Introduction
+
+For Project 2, our objective is to make 3 different ELT pipelines for 3 different wide-format .csv files.
+
+For my first one, I will be looking at a graph of car break-in data over time to understand and visualize the "Kia Boys" car jacking exploit, one that I personally have been a victim of. See video for details on the method. <https://www.youtube.com/watch?v=j78GIBMdW3g>
+
+## The Code
+
+First I will load in the libraries then I have to peel apart this .csv, which has a strange format for the columns. Big columns for location, and sub columns for counts of total car break-ins versus Kia/Hyunai break-ins.
+
+```{r}
+library(knitr)
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+CarBreakins <- read.csv("Motherboard VICE News Kia Hyundai Theft Data - Data.csv")
+
+kable(head(CarBreakins))
+```
+
+Now when I look at this data, I see a few things that I know need done. I would like the Kia/Hyundais, All, and Percent values to be in the same column, and I would like the locations to be a column as well, where there is only 1 column that truly has a number value.
+
+Based on the original data, my thought was to get the locations ("variable") in rows rather than columns -\> transpose data -\> change blank values to NA -\> fill down those rows -\> pivot them back to final long format in order to have 4 key columns: Location, Car, Date, and Value.
+
+```{r}
+CarBreaksT <- CarBreakins |>
+  mutate(
+    across(
+          1,
+          ~ if_else(
+            is.na(.x) | .x == "", "Car", .x))) |>
+  pivot_longer(
+    -1, 
+    names_to = "variable") 
+
+
+CarBreaksT2 <- CarBreaksT|> 
+  pivot_wider(
+    names_from = 1, 
+    values_from = value) |> 
+  mutate(
+    variable = if_else(
+      str_detect(variable, "^X\\.\\d+$"), NA, variable)) |>
+  fill(variable, .direction = "down")
+
+
+CarBreaksT3 <- CarBreaksT2 |> 
+  pivot_longer(!variable:Car) |> 
+  rename( Location = variable, Date = name, ) |>
+  mutate(
+        value = str_remove(value, "%"),
+        value = as.integer(value),
+        Car = str_squish(Car),
+        Date = my(Date))
+
+kable(head(CarBreaksT))
+kable(head(CarBreaksT2))
+kable(head(CarBreaksT3))
+
+```
+
+Once in this long format, I then wanted to continue my pipeline in a few directions.
+
+one thing I am interested in seeing plots is how total hijacks changed overtime. Do we see more hijacks overall due to the ease of hijacking with this Kia/Hyundai method?
+
+```{r}
+Analysis1 <- CarBreaksT3 |>
+  pivot_wider(names_from = Car, values_from = value) |>
+  group_by(Date) |>
+  summarize( KiaHyundaiProportion= sum(`Kia/Hyundais`, na.rm = TRUE)/
+                               sum(`All`, na.rm = TRUE),
+             KiaHyundaiProportion = round(KiaHyundaiProportion, digits = 2),
+             BreakIns = sum(`All`, na.rm = TRUE))
+
+kable(Analysis1)
+
+ggplot(data = Analysis1, aes(x = Date, y = KiaHyundaiProportion)) + geom_line() + labs(title = "Proportion of Kia/Hyundai Break-ins Over Time")
+
+Analysis2 <- Analysis1 |>
+  filter(Date >= as.Date("2021-01-01"))
+
+kable(Analysis2)
+
+ggplot(data = Analysis2, aes(x = Date, y = BreakIns)) + geom_line() + labs(title = "Sum of Car Break-Ins Over Time")
+```
+
+Given the contextual knowledge that the Kia Boys hijacking method was popularized around mid 2022, the first plot makes sense. We see a sharp spike in proportion of cars Hijacked that were Kia/Hundai, to the point where it almost reaches half of car breakins by mid 2023.
+
+The second plot looks at total count of car breakins to see if there is a spike around when the Kia Boys method was popularized. The valid data for this plot begins 2021 so we lose a bit of context, but we can see what looks like a spike mid 2022, which also correlates with nicer weather, as breaking into a car is no fun when it's dark and cold! I'd be curious of how this data continued to change from 2023-2026.
+
+My next analysis will get more granular to look at the different cities to see which cities were affected the most. Perhaps using some window functions as well to get an idea of change over time. I used Claude to generate locational buckets that I could more easily analyze.
+
+```{r}
+# Cities in the data without a state abbreviation
+city_state <- c(
+  "Atlanta" = "GA", "Bakersfield" = "CA", "Chicago" = "IL",
+  "Cincinatti" = "OH", "Dallas" = "TX", "Denver" = "CO",
+  "El Paso" = "TX", "Fort Worth" = "TX", "Irving Texas" = "TX",
+  "Louisville" = "KY", "Portland" = "OR", "Sacramento" = "CA",
+  "San Antonio" = "TX", "San Diego" = "CA", "San Francisco" = "CA",
+  "Virginia Beach" = "VA", "Washington D C" = "DC"
+)
+
+Analysis3 <- CarBreaksT3 |>
+  mutate(
+    key    = Location |> str_replace_all("[.,]", " ") |> str_squish(),
+    state  = coalesce(str_extract(key, "\\b[A-Z]{2}$"), city_state[key]),
+    region = as.character(state.region[match(state, state.abb)]),
+    region = case_when(
+      state == "DC"             ~ "South",
+      region == "North Central" ~ "Midwest",
+      .default = region
+    )
+  ) |>
+  select(-key) |>
+  pivot_wider(names_from = Car, values_from = value) |>
+  group_by(Date, region) |>
+  summarize( KiaHyundaiProportion= sum(`Kia/Hyundais`, na.rm = TRUE)/
+               sum(`All`, na.rm = TRUE),
+             KiaHyundaiProportion = round(KiaHyundaiProportion, digits = 2)) |>
+  group_by(region) |>
+  arrange(Date, .by_group = TRUE) |>
+  mutate(
+    RateOfChange = KiaHyundaiProportion - lag(KiaHyundaiProportion)
+  )
+
+kable(Analysis3)
+
+ggplot(data = Analysis3, aes(x = Date, y = KiaHyundaiProportion, color = region)) + geom_line() + labs(title = "Proportion of Kia/Hyundai Break-ins Over Time by Region") 
+
+ggplot(data = Analysis3, aes(x = Date, y = RateOfChange, color = region)) + geom_line() + labs(title = "Change Rate of Kia/Hyundai Break-ins Over Time by Region") 
+```
+
+## Conclusions
+
+From this analysis, we can see how there is a strong correlation between the virality of the Kia Boys trend and an increase in the proportion of break-ins, with a potential correlation to frequency of break-ins as well.
+
+You can see some more granular analysis with the regions broken out, with plots that look both at proportions over time as well as the change of those proportions over time. Both tell a story of how different regions saw this break-in method grow, with the Northeast and the South having the largest month-by-month spikes, but the Midwest having a more constant growth due to it being the origin of the method.
+
+Having the data in a long format initially allowed for a cleaner pipeline. It allows for the original dataframe to be very long and simple, and from there one can pivot wider to accomplish whatever they need from the data.

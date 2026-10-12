@@ -1,0 +1,133 @@
+---
+title: "Project2_Dataset2"
+format: html
+editor: visual
+author: Nick Weiner
+echo: True
+---
+
+## Introduction
+
+For Project 2, our objective is to make 3 different ELT pipelines for 3 different wide-format .csv files.
+
+For this set of data, I am looking at energy uses and sources based on country. I would like to get it in a longer format, do some general analysis and plotting to get a lay of the land, and then look into
+
+## The Code
+
+```{r}
+library(knitr)
+library(tidyverse)
+library(lubridate)
+```
+
+For my data, I wanted not only to look at energy data but also population data from those countries. I felt like there could be an interesting correlation between population and energy usage. I used Claude to generate a .csv of population data that I could then join.
+
+```{r}
+Energy <- read.csv("electricity_production_by_country.csv")
+Population <- read.csv("country_population.csv")
+kable(head(Energy))
+kable(head(Population))
+```
+
+Here is the bulk of my data tidying and pivoting. I first pivoted the energy sources into their own column, and then I cleaned and organized the data. Following that, I did a left_join on the population data in order to get a full set of data that I could then manipulate.
+
+```{r}
+Energy1 <- Energy |>
+  pivot_longer(Total_TWh:Other_renewables_TWh) |>
+  mutate(Energy_Source = str_remove_all(name, "_TWh$")) |>
+  select(!name) |>
+  relocate(Year, Location, Energy_Source, value)|>
+  rename("Value_TWh" = value)
+
+kable(head(Energy1))
+
+Energy2 <- Energy1 |>
+  left_join(Population,
+    by = c("Location", "Year"))|>
+  select(!Year)|>
+  mutate(
+    Value_TWh = as.integer(Value_TWh),
+    Population = as.integer(Population)
+  )
+
+kable(head(Energy2))
+```
+
+The data I was most interested in was seeing how the populations intersect with the energy usage data. I made some scatter plots not only to compare Population with energy usage but also population with per capital energy usage to see if different countries had different energy efficiencies.
+
+```{r}
+Energy3 <- Energy2 |>
+  mutate(Per_Capita_Energy_kWh = (Value_TWh/Population)*1e9)|>
+  filter(!is.na(Population)) |>
+  filter(!is.na(Per_Capita_Energy_kWh)) |>
+  filter(Energy_Source == "Total") 
+
+kable(head(Energy3))
+
+ggplot(data = Energy3, aes(x = Population, y = Per_Capita_Energy_kWh)) + geom_point() +
+  scale_x_log10(labels = scales::comma) +
+  scale_y_log10(labels = scales::comma)
+
+ggplot(data = Energy3, aes(x = Population, y = Value_TWh)) + geom_point() +
+  scale_x_log10(labels = scales::comma) +
+  scale_y_log10(labels = scales::comma)
+```
+
+What I'm seeing here is that the top 3 each tell a story. First, China and India have a similar population, but you see that India has a much lower energy use per capita. With America being a few hundred million behind those two, it has a higher energy use per capita. Energy use per capita does not take into account industrial energy usage.
+
+Now lets look at energy distribution between "clean" and "dirty" energy distributions.
+
+```{r}
+Energy4 <- Energy2 |>
+  filter(Location != "World") |>
+  filter(Energy_Source != "Total") |>
+  mutate(Energy_Class = recode_values(
+    Energy_Source,
+    c("Coal", "Gas", "Other_fossil", "Bioenergy") ~ "Dirty",
+    c("Nuclear", "Hydro", "Wind", "Solar", "Other_renewables") ~ "Clean"
+  )) |>
+  group_by(Energy_Source, Energy_Class)|>
+  summarize(Total_Energy_Use = sum(Value_TWh, na.rm = TRUE))
+
+kable(head(Energy4))
+
+ggplot(Energy4, aes(x = Energy_Class, y = Total_Energy_Use, fill = Energy_Source)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = NULL, y = "TWh", fill = "Source")
+```
+
+This shows a decent visual of the breakdown of energy usage between clean and dirty energy sources.
+
+I wanted to take it a step further so I also asked Claude for help with the visual. This is what it put out.
+
+```{r}
+source_order <- c("Coal", "Gas", "Other_fossil", "Bioenergy",
+                  "Nuclear", "Hydro", "Wind", "Solar", "Other_renewables")
+source_cols  <- c(Coal = "#3b2a1a", Gas = "#7a5230", Other_fossil = "#a67c52", Bioenergy = "#d2b48c",
+                  Nuclear = "#1b5e20", Hydro = "#2e7d32", Wind = "#43a047", Solar = "#81c784",
+                  Other_renewables = "#c8e6c9")
+
+
+class_totals <- Energy4 |>
+  group_by(Energy_Class) |>
+  summarise(Total = sum(Total_Energy_Use)) |>
+  mutate(Share = Total / sum(Total),
+         label = paste0(Energy_Class, ": ", scales::percent(Share, accuracy = 1)))
+
+ggplot(Energy4, aes(x = "World", y = Total_Energy_Use, fill = Energy_Source)) +
+  geom_col(width = 0.5) +
+  scale_fill_manual(values = source_cols, breaks = source_order) +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip() +
+  labs(
+    x = NULL, y = "TWh", fill = "Source",
+    subtitle = paste(class_totals$label, collapse = "   |   ")
+  )
+```
+
+## Conclusion
+
+There are a few things to take away from this breakdown. We can see that there is not a clear correlation between Energy per capita and population, as there are many factors such as industry and culture that affect power usage. We can see a direct proportion between population and energy use however.
+
+We also observe that when you look at the world total usages of energy, it almost looks to be 50% clean and 50% dirty energy. Obviously, we are constantly pushing as a society towards cleaner energy sources, but I would expect to have seen a higher value for dirty energy sources. The use of coal as the major source of fuel was surprising given USA's stance on it, but understandably it is an affordable and notorious method of energy generation.
