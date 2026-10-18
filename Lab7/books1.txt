@@ -1,0 +1,4 @@
+title, author1, author2, author3, author4,  publication year, publisher,
+The Microbiology of Anaerobic Digesters, Michael H. Gerardi, NA, NA, NA, 2003, John Wiley & Sons Inc.,
+Wastewater Engineering: Treatment and Resource Recovery, George Tchobanoglous, H. David Stensel, Ryujiro Tsuchihashi, Franklin L. Burton, 2014, Metcalf & Eddy Inc.,
+The Science of Sewage: What Happens When We Flush, Julian Doberski, NA, NA, NA, 2024, Ad Lib Publishers Ltd.

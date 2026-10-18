@@ -1,0 +1,83 @@
+---
+title: "Lab 7 Code Base"
+author: "Nick Weiner"
+format: html
+editor: visual
+echo: true
+execute:
+  warning: false
+  message: false
+---
+
+## Introduction
+
+For this assignment, we will be looking at converting data from JSON and HTML files to readable and workable R datasets.
+
+Due to my recent involvement in our Wastewater facility at work, I wanted to look at textbooks about Wastewater treatment. I chose to look at the title, the authors, the year of publication, and the publisher.
+
+I have started this assignment by putting together a .csv of what I expect the final output to look like. I will use this to base both my JSON and my HTML files off of. I have done some light research of what these different data formats look like and how to get them into the standard R format after creating them. There exist specialized packages for loading these types of dataframes into R with more ease, and I may use these to increase the efficiency of my pipeline.
+
+I will be creating the different .JSON and .HTML files in my notepad app.
+
+## The Code
+
+The libraries I will use for this are tidyverse, jsonlite (for reading json files), rvest (for reading html), knitr (for visualizing tables), and janitor (for an issue I will elaborate on below).
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(rvest)
+library(knitr)
+library(janitor)
+```
+
+First I will load in the .csv that I want the data to look like.
+
+```{r}
+books1 <- read.csv("books1.txt") |>
+  select(-X)
+
+kable(books1)
+```
+
+I manually created a JSON file to read for this step. What I found from researching the JSON format is that an R "NA" is equal to a JSON "null". I also see now that JSON files use quotations to tell the system the point of data is a character, similar to R.
+
+```{r}
+booksJSON <- fromJSON("books1.json")
+
+kable(booksJSON)
+```
+
+As we can see this data imported with no issues. I made sure to keep the fields of 4 authors for each set of data in the JSON so that there weren't any issues with mismatching variables between the observations.
+
+Now to do the same with HTML format. from preliminary review this data format seems a little more complex than JSON. To do this, i used a function I haven't used yet called pluck. Pluck allows you to pull information out of a nested data structure, which for some reason is what loads in after reading the HTML.
+
+```{r}
+booksHTML <- read_html("books1.html") |>
+  html_table() |>
+  pluck(1)
+
+kable(booksHTML)
+```
+
+Finally, to compare the 2 dataframes I cleaned both up to be in the same format, and used bind_rows to compare. The interesting thing with this pipeline is that the booksHTML file included an extra nameless index column that threw the R into an error. I researched this error and found that one way to fix this was to use clean_names() to make all the column names work in the system, which I used as an insurance policy incase just removing the column didn't work.
+
+```{r}
+booksJSON1 <- booksJSON |>
+  mutate(original="JSON")
+
+booksHTML1 <- booksHTML |>
+  clean_names() |>
+  select(-1)|>
+  mutate(original="HTML")
+
+bookscombined <- bind_rows(booksHTML1, booksJSON1)
+
+kable(bookscombined)
+```
+
+## Conclusion
+
+Looking at the two data formats in the same table, you can see the only noticeable difference is the "NA" versus "NaN". This could be a personal issue from my formatting, as I failed to input the values in my .HTML in a way that actually translated them in R. Either there is a way to edit it on the front end during the HTML read, or simply clean it on the back end using tidyverse tools. Either way, both tables represent the goal .csv file I had initially used as a visualizer.
+
+Overall, this exercise helped familiarize me with the different data formats that I may stumble into when working with both in this class and in my career. Understanding this aspect of being able to load .HTML and .JSON file formats into R fairly easily, I can see how powerful this capability will be when it comes to scraping websites or working with API's.

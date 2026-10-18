@@ -1,0 +1,12 @@
+---
+title: "Lab7"
+author: "Nick Weiner"
+format: html
+editor: visual
+---
+
+## Approach
+
+For this assignment, we are being asked to manually create HTML and JSON files for book information. We then would load each structured data into R to compare and contrast.
+
+Since I have been working more with wastewater at my job, I will choose some academic books about anaerobic and aerobic digester systems. I expect to have difficulty with different formats of books (multiple authors versus just 1 author). I have worked with JSON files through Microsoft automated workflows so it will be nice to peek under the hood a bit and gain a better understanding.
