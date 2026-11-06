@@ -1,0 +1,11 @@
+---
+title: "10B_Approach"
+format: html
+editor: visual
+---
+
+## Approach
+
+This project is focused on working with JSON formatted files through the Nobel Prize API. From doing some preliminary research into this API, I see both dataframes with solely lists and dataframes with list-columns. I will likely start with some simple joins and then see what questions come to me as I look at the shape of the data.
+
+From initial investigation, I think it could be interesting to look at both birth places and death places. Where are these Nobel prize winners moving around to, especially after receiving their awards, as it may speak to areas where people with these awards may be able to continue their work. I think it could also be interesting to try to apply some of the sentiment lexicons from 10A to see if they have any significance with the descriptions of the Nobel peace prizes - are there certain word emotions tied to different kinds of peace prizes (science, literature, etc)? I feel that other questions will come to me as I continue looking at the data, but these are just 2 that come to mind upon first glance.
