@@ -1,0 +1,587 @@
+---
+title: "10A CodeBase"
+format: html
+editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+  error: false     # this is already the default
+---
+
+## Introduction
+
+For this assignment, we will be working with sentiment analysis focused on word-based datasets. We were given an example of Jane Austen books from tidytext, and are being asked to use this as a reference point to build out semantic analysis.
+
+I will be using this exercise as a means to experiment with different visualization tools, as well as different semantic lexicon packages to see how different ones perform at gauging mood and tone of texts.
+
+## Running Code
+
+First I will load in the Jane Austen sentiment analysis for reference. This is sourced from chapter 2 of "Text Mining with R" by Julia Silge & David Robinson.
+
+```{r}
+library(tidytext)
+library(knitr)
+get_sentiments("afinn")
+```
+
+```{r}
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+```
+
+```{r}
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+```
+
+```{r}
+library(tidyr)
+
+jane_austen_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(jane_austen_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+Now to start, I am going to load in my 3 texts I will be observing for this exercise: Dune, Dune: Messiah, and Children of Dune. I have read the first 2 and I am starting the 3rd, so I am curious how the semantic analysis per line does at capturing the mood of the books. So I will start there.
+
+```{r}
+Dune1 <- read.csv("https://raw.githubusercontent.com/nweiner721/DATA607/refs/heads/main/assignment%2010/Frank_Herbert_Dune1.csv")
+Dune2 <- read.csv("https://raw.githubusercontent.com/nweiner721/DATA607/refs/heads/main/assignment%2010/Dune2.csv")
+Dune3 <- read.csv("https://raw.githubusercontent.com/nweiner721/DATA607/refs/heads/main/assignment%2010/Dune3.csv")
+```
+
+Since these files were converted from pdfs, first thing I wanted to look at was the differences in formatting. Overall the files were very similar, except for Dune 3 where there were some rows that seem to have been parsed from the headers of each page. I filtered these out and added an index number to each of the tables.
+
+```{r}
+Dune1t <- Dune1 |>
+  slice(-(1:7)) |>
+  mutate(index=row_number())
+
+Dune2t <- Dune2 |>
+  slice(-(1:185)) |>
+  mutate(index=row_number())
+
+Dune3t <- Dune3 |>
+  slice(-(1:200)) |>
+  filter(!str_detect(text, "CHILD|HER"))|>
+  mutate(index=row_number())
+
+
+```
+
+From here I looked to tidy more to get to a point where I could have my data to a similar state as the Jane Austen data seen above. I cleaned up the table's formatting and added new values to show the chapter. Due to the nature of how the lines were pulled from the PDF's, it may be more effective to do sentiment analysis based on pages rather than lines.
+
+```{r}
+Dune1s <- Dune1t |>
+  mutate(lead=lead(line_num),
+         lag=lag(line_num),
+        newpage = line_num < lag,
+        page = 1 + cumsum(coalesce(newpage, FALSE)),
+        newchapter = str_detect(text, "="),
+        chapter = 1 +cumsum(newchapter)
+        ) |>
+  select(index, chapter, page, line_num, text )|>
+  unnest_tokens(text, text)
+  
+Dune2s <- Dune2t |>
+  mutate(lead=lead(line_num),
+         lag=lag(line_num),
+         newpage = line_num < lag,
+         page = 1 + cumsum(coalesce(newpage, FALSE)),
+         newchapter = str_detect(text, "="),
+         chapter = 1 +cumsum(newchapter)
+  ) |> 
+  select(index, chapter, page, line_num, text ) |>
+  unnest_tokens(text, text)
+  
+Dune3s <- Dune3t |>
+  mutate(lead=lead(line_num),
+         lag=lag(line_num),
+         newpage = line_num < lag,
+         page = 1 + cumsum(coalesce(newpage, FALSE)),
+         newchapter = str_detect(text, "="),
+         chapter = 1 +cumsum(newchapter)
+  ) |> 
+  select(index, chapter, page, line_num, text ) |>
+  unnest_tokens(text, text)
+
+
+```
+
+Quick join to create a master, long-format dataframe.
+
+```{r}
+tidybooks2 <- bind_rows(
+  "Dune"          = Dune1s,
+  "Dune Messiah"  = Dune2s,
+  "Children of Dune" = Dune3s,
+  .id = "book"
+) |>
+  rename("word" = "text") |>
+  mutate(page = as.integer(page))
+```
+
+I will now be applying the sentiment analysis function to each of these datasets.
+
+```{r}
+Dune_Sentiment_lines <- tidybooks2 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = index %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(Dune_Sentiment_lines, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+So right off the bat we can see that these graphs are very negative, which I am not sure if that's a byproduct of the tone of these books, or a byproduct of some erroneous method of sentiment analysis. I am going to recreate these graphs based on page to see if they give us a different visual.
+
+```{r}
+Dune_Sentiment_pages1 <- tidybooks2 %>% #to observe how many words did not join
+  inner_join(get_sentiments("bing"))
+
+Dune_Sentiment_pages <- tidybooks2 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = page, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(Dune_Sentiment_pages, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+As we can see, we get a very similar analysis. This could be because of the nature of the books being science fiction, meaning much of the sentiment or meaning could be tied to things that aren't rooted in regular vocabulary. Because of this, the words that are getting detected may be overwhelmingly negative, as the books are not very much happy stories. You can see short bursts of positivity throughout, which I would say lines up with some portions of the dialogue.
+
+To continue this analysis, I used Claude to create a new lexicon based on the "bing" lexicon, but with more effort given to the dune universe. It changed things like desert and worm to neutral rather than negative, and water became a positive due to the significance in the world of dune.
+
+```{r}
+# =============================================================================
+# Dune sentiment lexicon
+# -----------------------------------------------------------------------------
+# A weighted lexicon on an AFINN-style scale (-5 = very negative, +5 = very
+# positive), built in two layers:
+#   1. general  - common emotional words, re-weighted for sci-fi / epic tone
+#   2. dune     - Dune-universe terms scored by how the books treat them
+#
+# Weight 0 entries are deliberate: they mark words a generic lexicon gets wrong
+# in Dune (e.g. Bing scores "desert" and "worm" as negative). When you merge
+# with Bing, these 0s override Bing and are then dropped so they don't count.
+#
+# Tokenization note: unnest_tokens() lowercases and splits on hyphens and
+# spaces, so multi-word terms are scored on their most distinctive token:
+#   Shai-Hulud -> "hulud", Bene Gesserit -> "gesserit", Kwisatz Haderach ->
+#   "haderach", Lisan al-Gaib -> "gaib", gom jabbar -> "jabbar",
+#   mind-killer -> "killer", hunter-seeker -> "seeker", Giedi Prime -> "giedi"
+# =============================================================================
+
+library(dplyr)
+library(tibble)
+library(tidytext)
+
+# --- 1. General vocabulary ---------------------------------------------------
+general_lex <- tribble(
+  ~word,          ~value,
+  # positive
+  "love",            3,  "beloved",        3,  "joy",             3,
+  "delight",         3,  "rejoice",        3,  "happy",           3,
+  "beautiful",       3,  "victory",        3,  "triumph",         3,
+  "hope",            2,  "peace",          2,  "trust",           2,
+  "loyal",           2,  "loyalty",        2,  "faithful",        2,
+  "honor",           2,  "honorable",      2,  "noble",           2,
+  "courage",         2,  "brave",          2,  "freedom",         2,
+  "safe",            2,  "safety",         2,  "friend",          2,
+  "wise",            2,  "wisdom",         2,  "strength",        2,
+  "gentle",          2,  "kind",           2,  "mercy",           2,
+  "merciful",        2,  "gift",           2,  "blessed",         2,
+  "blessing",        2,  "laugh",          2,  "smile",           2,
+  "alive",           2,  "survive",        2,  "rescue",          2,
+  "protect",         2,  "glory",          2,  "justice",         2,
+  "comfort",         2,  "grateful",       2,  "thank",           2,
+  "strong",          1,  "calm",           1,  "free",            1,
+  "survival",        1,  "clever",         1,  "promise",         1,
+  # negative
+  "murder",         -4,  "betray",        -4,  "betrayal",       -4,
+  "betrayed",       -4,  "traitor",       -4,  "treachery",      -4,
+  "torture",        -4,
+  "death",          -3,  "dead",          -3,  "die",            -3,
+  "dying",          -3,  "kill",          -3,  "killed",         -3,
+  "killing",        -3,  "pain",          -3,  "terror",         -3,
+  "hate",           -3,  "hatred",        -3,  "cruel",          -3,
+  "cruelty",        -3,  "deceit",        -3,  "poison",         -3,
+  "poisoned",       -3,  "grief",         -3,  "sorrow",         -3,
+  "despair",        -3,  "doom",          -3,  "rage",           -3,
+  "violence",       -3,  "slave",         -3,  "slavery",        -3,
+  "curse",          -3,  "cursed",        -3,  "suffer",         -3,
+  "suffering",      -3,  "starve",        -3,  "destroy",        -3,
+  "destruction",    -3,  "ruin",          -3,  "horror",         -3,
+  "assassin",       -3,  "assassination", -3,
+  "fear",           -2,  "afraid",        -2,  "blood",          -2,
+  "enemy",          -2,  "enemies",       -2,  "war",            -2,
+  "lie",            -2,  "lies",          -2,  "weep",           -2,
+  "tears",          -2,  "danger",        -2,  "dangerous",      -2,
+  "threat",         -2,  "weak",          -2,  "weakness",       -2,
+  "anger",          -2,  "angry",         -2,  "prison",         -2,
+  "prisoner",       -2,  "trap",          -2,  "fail",           -2,
+  "failure",        -2,  "lost",          -2,  "darkness",       -2,
+  "wound",          -2,  "wounded",       -2,  "scream",         -2,
+  "revenge",        -2,  "vengeance",     -2,
+  "alone",          -1,  "cold",          -1,  "dark",           -1
+) |>
+  mutate(category = "general")
+
+# --- 2. Dune-specific vocabulary ---------------------------------------------
+dune_lex <- tribble(
+  ~word,          ~value, ~note,
+  # water & survival: water is life on Arrakis
+  "water",           2,  "most precious resource; life itself",
+  "sietch",          2,  "Fremen home and refuge",
+  "stillsuit",       1,  "survival technology",
+  "carryall",        1,  "usually arrives as rescue",
+  "thirst",         -2,  "deadly on Arrakis",
+  "thirsty",        -2,  "",
+  "drought",        -2,  "",
+  "coriolis",       -2,  "lethal storm",
+  "sandstorm",      -2,  "",
+  "storm",          -2,  "",
+  # factions & people
+  "fremen",          1,  "protagonist-aligned desert people",
+  "atreides",        1,  "protagonist house",
+  "naib",            1,  "sietch leader",
+  "harkonnen",      -3,  "villainous house",
+  "harkonnens",     -3,  "",
+  "sardaukar",      -3,  "Emperor's terror troops",
+  "tleilaxu",       -2,  "untrusted gene-manipulators",
+  "smuggler",       -1,  "",
+  # religion, prophecy, power
+  "muad'dib",        2,  "Paul's Fremen name; heroic",
+  "usul",            1,  "Paul's sietch name",
+  "haderach",        1,  "Kwisatz Haderach",
+  "gaib",            1,  "Lisan al-Gaib, the prophesied one",
+  "mahdi",           1,  "messiah",
+  "hulud",           1,  "Shai-Hulud; worm revered as god",
+  "maker",           1,  "Fremen name for the sandworm",
+  "litany",          1,  "Litany against Fear; composure",
+  "jihad",          -3,  "holy war; billions dead",
+  "abomination",    -4,  "Alia; pre-born possessed",
+  "heresy",         -2,  "",
+  "heretic",        -2,  "",
+  # danger & violence
+  "jabbar",         -3,  "gom jabbar, poison needle test",
+  "killer",         -3,  "fear is the mind-killer",
+  "kanly",          -3,  "formal vendetta",
+  "seeker",         -2,  "hunter-seeker assassination drone",
+  "lasgun",         -2,  "weapon",
+  # places
+  "caladan",         1,  "lost Atreides home",
+  "giedi",          -2,  "Giedi Prime, Harkonnen homeworld",
+  "salusa",         -1,  "Salusa Secundus, prison planet",
+  # deliberately neutral: override generic lexicons that misread these
+  "desert",          0,  "Bing: negative (as in 'abandon')",
+  "worm",            0,  "Bing: negative",
+  "worms",           0,  "",
+  "sandworm",        0,  "",
+  "sand",            0,  "",
+  "dune",            0,  "book title / landform",
+  "spice",           0,  "valuable but corrupting; context-dependent",
+  "melange",         0,  "",
+  "gesserit",        0,  "Bene Gesserit; ambiguous",
+  "mentat",          0,  "",
+  "prescience",      0,  "a burden as much as a gift",
+  "ghola",           0,  "",
+  "guild",           0,  "",
+  "navigator",       0,  "",
+  "emperor",         0,  "",
+  "padishah",        0,  "",
+  "landsraad",       0,  "",
+  "arrakis",         0,  "",
+  "crysknife",       0,  "sacred weapon; violent and revered",
+  "thumper",         0,  ""
+) |>
+  mutate(category = "dune")
+
+# --- 3. Combine ----------------------------------------------------------------
+dune_lexicon <- bind_rows(general_lex, dune_lex) |>
+  mutate(sentiment = case_when(value > 0 ~ "positive",
+                               value < 0 ~ "negative",
+                               TRUE      ~ "neutral")) |>
+  select(word, value, sentiment, category, note)
+
+stopifnot(!anyDuplicated(dune_lexicon$word))  # guard against double entries
+
+# --- 4. Optional: extend with Bing for broader coverage -----------------------
+# Bing words get +/-2; any word in dune_lexicon (including the 0s) wins.
+build_dune_bing <- function(lex = dune_lexicon, bing_weight = 2) {
+  bing <- get_sentiments("bing") |>
+    distinct(word, .keep_all = TRUE) |>
+    mutate(value    = if_else(sentiment == "positive", bing_weight, -bing_weight),
+           category = "bing") |>
+    anti_join(lex, by = "word")
+  
+  bind_rows(lex, bing) |>
+    filter(value != 0) |>
+    select(word, value, sentiment, category)
+}
+
+dune_bing_lexicon <- build_dune_bing()
+
+```
+
+Now I will use this new lexicon to see how it changes the sentiment analysis.
+
+```{r}
+tidybooks2 <- tidybooks2 |>
+  mutate(word = str_replace_all(word, "’", "'"))
+
+Dune_Sentiment_lexicon1 <- tidybooks2 |>
+  inner_join(dune_bing_lexicon, by = "word") #to see what words didn't get joined
+
+Dune_Sentiment_lexicon2 <- tidybooks2 |>
+    inner_join(dune_bing_lexicon, by = "word") %>%   
+    group_by(book, index = page) %>%
+    summarise(sentiment = sum(value), .groups = "drop")
+
+ggplot(Dune_Sentiment_lexicon2, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+Now we can see a little more shape to our graphs, With "Children of Dune" almost appearing to teeter on neutral, while "Dune" definitely presents to be the most negative. I would've expected "Dune Messiah" to be more negative, but perhaps because the pace is less intense as "Dune" it comes across as less negative.
+
+The last analysis I want to do is to use a lexicon that puts words into buckets of 5 or 6 key emotions, and use that lexicon to create a strengths circle. I will accomplish this initially by using the "nrc" lexicon.
+
+```{r}
+Dune_Sentiment_buckets <- tidybooks2 |>
+  inner_join(get_sentiments("nrc")) |>
+  group_by(book) |>
+  count(sentiment) |>
+  mutate(prop = 100*n/sum(n))
+
+coord_radar <- function(theta = "x", start = -pi / 6, direction = 1) {
+  theta <- match.arg(theta, c("x", "y"))
+  r <- if (theta == "x") "y" else "x"
+  ggproto("CoordRadar", CoordPolar,
+          theta = theta, r = r, start = start,
+          direction = sign(direction),
+          is_linear = function(coord) TRUE)
+}
+ggplot(Dune_Sentiment_buckets,
+       aes(x = sentiment, y = prop, group = book, colour = book, fill = book)) +
+  geom_polygon(alpha = 0.15, linewidth = 0.8) +
+  geom_point(size = 2) +
+  coord_radar() +
+  scale_y_continuous(labels = scales::percent, limits = c(0, NA)) +
+  labs(title = "Emotional profile of the Dune books",
+       subtitle = "Share of emotion-tagged words in each bucket",
+       x = NULL, y = NULL, colour = NULL, fill = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(size = 12, face = "bold"),
+        legend.position = "bottom")
+Dune_Sentiment_buckets
+```
+
+I find it very interesting that the graph returned shows that these emotion buckets are nearly identical across all 3 books. I am wondering if that is because of Herbert's style of writing, or if something went wrong with the analysis. To compare, I will conduct this same process on the Jane Austen books.
+
+```{r}
+jane_austen_buckets <- tidy_books |>
+  inner_join(get_sentiments("nrc")) |>
+  group_by(book) |>
+  count(sentiment) |>
+  mutate(prop = 100*n/sum(n))
+
+ggplot(jane_austen_buckets,
+       aes(x = sentiment, y = prop, group = book, colour = book, fill = book)) +
+  geom_polygon(alpha = 0.15, linewidth = 0.8) +
+  geom_point(size = 2) +
+  coord_radar() +
+  scale_y_continuous(labels = scales::percent, limits = c(0, NA)) +
+  labs(title = "Emotional profile of the Jane Austen books",
+       subtitle = "Share of emotion-tagged words in each bucket",
+       x = NULL, y = NULL, colour = NULL, fill = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(size = 12, face = "bold"),
+        legend.position = "bottom")
+
+jane_austen_buckets
+```
+
+Again, interestingly, the shape of this distribution pretty identical across books except for a few deviations. This, to me, points to both a difference in Author's tone and possibly a shortcoming in the lexicon itself to be able to discern more detailed portions of a story.
+
+To dive deeper into this point, I would like to apply Claude as I did earlier to create Dune-focused buckets of sentiment that can be used to analyze the book differently. This way we can see that if there is a sentiment lexicon that is specialized to world in which these books take place, maybe we can see a more telling visual analysis. See below for a Dune-focused emotional bucket lexicon, choosing to make central emotional themes the different buckets of interest.
+
+```{r}
+# =============================================================================
+# Dune emotion lexicon + radar ("strengths circle") chart
+# -----------------------------------------------------------------------------
+# Six emotion buckets built around the books' core themes:
+#
+#   fear       - dread, terror, danger    ("Fear is the mind-killer")
+#   wrath      - anger, violence, war     (kanly, Harkonnen brutality, jihad)
+#   treachery  - betrayal, plots, poison  (Yueh, the Baron's schemes)
+#   faith      - prophecy, religion, fate (Lisan al-Gaib, Muad'Dib, prescience)
+#   endurance  - survival, water, desert  (Fremen discipline, the stillsuit)
+#   devotion   - love, loyalty, honor     (Atreides loyalty, Paul & Chani)
+#
+# Like the NRC lexicon, a word may sit in more than one bucket when the books
+# use it both ways (e.g. "jihad" is wrath AND faith).
+#
+# Tokenization: unnest_tokens() splits on spaces/hyphens, so multi-word terms
+# use their most distinctive token: Shai-Hulud -> "hulud", Lisan al-Gaib ->
+# "gaib", Kwisatz Haderach -> "haderach", gom jabbar -> "jabbar",
+# mind-killer -> "killer", hunter-seeker -> "seeker", Bene Gesserit ->
+# "gesserit". No stemming is applied, so common inflections are listed.
+#
+# Left out on purpose: character names, and words like "spice", "mother",
+# "duke" and "lie" whose meaning varies too much by context (Reverend Mother,
+# "lie down", etc.) and would inflate one bucket.
+# =============================================================================
+
+library(dplyr)
+library(tidyr)
+library(tibble)
+library(ggplot2)
+
+emotion_words <- list(
+  
+  fear = c(
+    "fear", "feared", "fears", "fearful", "afraid", "terror", "terrified",
+    "dread", "panic", "horror", "tremble", "trembled", "trembling", "shiver",
+    "scream", "screamed", "nightmare", "danger", "dangerous", "threat",
+    "peril", "coward", "anxious", "anxiety", "uneasy", "flee", "fled",
+    # Dune
+    "killer", "jabbar", "seeker", "abomination", "worm", "worms", "sandworm",
+    "coriolis", "sandstorm"
+  ),
+  
+  wrath = c(
+    "anger", "angry", "rage", "raged", "fury", "furious", "hate", "hatred",
+    "kill", "killed", "killing", "murder", "murdered", "slaughter", "blood",
+    "bloody", "war", "battle", "fight", "fought", "attack", "attacked",
+    "strike", "violence", "violent", "cruel", "cruelty", "revenge",
+    "vengeance", "destroy", "destroyed", "destruction", "torture", "knife",
+    "blade", "sword", "weapon", "weapons",
+    # Dune
+    "kanly", "jihad", "sardaukar", "harkonnen", "harkonnens", "lasgun"
+  ),
+  
+  treachery = c(
+    "betray", "betrayed", "betrayal", "traitor", "treachery", "treason",
+    "deceit", "deceive", "deceived", "lies", "liar", "plot", "plots",
+    "scheme", "schemes", "scheming", "trap", "trick", "cunning", "secret",
+    "secrets", "poison", "poisoned", "assassin", "assassins", "assassination",
+    "spy", "spies", "disguise", "conspiracy", "intrigue", "suspicion",
+    "suspect",
+    # Dune
+    "tleilaxu", "gesserit"
+  ),
+  
+  faith = c(
+    "god", "gods", "holy", "sacred", "prayer", "pray", "prayed", "prophecy",
+    "prophet", "prophesied", "legend", "messiah", "destiny", "fate",
+    "vision", "visions", "future", "believe", "belief", "faith", "worship",
+    "religion", "ritual", "ceremony", "blessed", "blessing", "miracle",
+    "oracle", "priest", "priests", "trance",
+    # Dune
+    "prescience", "prescient", "mahdi", "gaib", "haderach", "muad'dib",
+    "hulud", "maker", "litany", "reverend", "crysknife", "jihad"
+  ),
+  
+  endurance = c(
+    "survive", "survived", "survival", "endure", "endured", "patience",
+    "patient", "discipline", "strength", "strong", "hardship", "struggle",
+    "hunger", "hungry", "starve", "weary", "exhausted", "thirst", "thirsty",
+    "drought", "dry", "heat", "sun", "ration", "rations", "conserve",
+    # Dune
+    "water", "desert", "sand", "dew", "stillsuit", "stillsuits", "sietch",
+    "fremen", "thumper"
+  ),
+  
+  devotion = c(
+    "love", "loved", "beloved", "loyal", "loyalty", "faithful", "honor",
+    "honorable", "duty", "oath", "friend", "friends", "friendship", "trust",
+    "trusted", "hope", "hoped", "protect", "protected", "comfort", "gentle",
+    "mercy", "tenderness", "kiss", "embrace", "companion", "ally", "allies",
+    "grateful", "gratitude", "sacrifice",
+    # Dune
+    "atreides", "caladan", "usul"
+  )
+)
+
+dune_emotions <- enframe(emotion_words, name = "emotion", value = "word") |>
+  unnest(word) |>
+  distinct() |>
+  mutate(emotion = factor(emotion, levels = names(emotion_words)))
+
+# Quick look at bucket sizes
+count(dune_emotions, emotion)
+
+
+emotion_counts <- tidybooks2 |>
+  inner_join(dune_emotions, by = "word", relationship = "many-to-many") |>
+  count(book, emotion) |>
+  complete(book, emotion, fill = list(n = 0)) |>
+  group_by(book) |>
+  mutate(share = n / sum(n)) |>   
+  ungroup()                       
+
+
+ggplot(emotion_counts,
+       aes(x = emotion, y = share, group = book, colour = book, fill = book)) +
+  geom_polygon(alpha = 0.15, linewidth = 0.8) +
+  geom_point(size = 2) +
+  coord_radar() +
+  scale_y_continuous(labels = scales::percent, limits = c(0, NA)) +
+  labs(title = "Emotional profile of the Dune books",
+       subtitle = "Share of emotion-tagged words in each bucket",
+       x = NULL, y = NULL, colour = NULL, fill = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(size = 12, face = "bold"),
+        legend.position = "bottom")
+emotion_counts
+```
+
+## Conclusion
+
+Through this analysis of different lexicons, there are a few takeaways we can observe. Key point being that these lexicons can be a good starting point for taking away sentiment from text written very grounded in our reality, but when transported to an alternate reality the meaning and sentiment can get very distorted. When applying the "bing" lexicon to the dune books, we saw a heavy skew towards negativity, and of the 425,078 words identified in the 3 Dune books, only 5.8% were given sentiment values. When we modified our lexicon to be more specific to the Dune universe, not only did we see more characterized sentiment graphs, but also we saw 1.2% jump in word recognition, which tells that a majority of words are not sentimentally significant (think and, or, to, etc.). Regardless, being more accurate to the source material allowed for the sentiment analysis to be more telling.
+
+Second, looking at emotional buckets of words used in the writings, we can see that the strengths circle visualizations show more of a pattern in the author's writing than a pattern within the book, likely again due to the generalization of the sentiment lexicon. When we again used an LLM to create Dune-specific emotional buckets, we saw differences in graph shape that can point us to discussions around key themes of each book.
+
+Lastly, through this exercise we can observe that using LLM's as a means to accelerate and improve these lexicon analyses seems to be a very effective use case. Very quickly was I able to make a very specialized sentiment database that both references the ones that already existed but also was synthesized entirely new.
+
+Looking at the broader takeaways from this exercise point me in the direction of applying this in a more practical case. With the media and political landscape of today very much existing within bubbles or echo chambers, you could argue that these certain news outlets could be presenting information in their own "reality". Perhaps when applying a blanket lexicon analysis to political arguments, you could see misconstrued analyses based on how different parties or new networks are describing their efforts. When words like immigration, socialism, Iran appear in the news today, the different news distributors are using them differently, where in one case they could be shown as a good thing and in another case bad. Overall it goes to show that the meaning of words is frail compared to the context of the larger message, which I think is something that was addressed in the making of successful LLM models and can also be analyzed further in the context of my findings above.
