@@ -2,6 +2,11 @@
 title: "10B CodeBase"
 format: html
 editor: visual
+execute:
+  echo: true
+  message: false
+  warning: false
+  error: false   
 ---
 
 ## Introduction
@@ -89,7 +94,6 @@ head(moves)
 ```
 
 ```{r}
-install.packages(c("igraph", "ggraph"))   # run once
 library(igraph)
 library(ggraph)
 
