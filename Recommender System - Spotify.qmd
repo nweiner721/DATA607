@@ -1,0 +1,61 @@
+---
+title: "Recommender System"
+format: html
+editor: visual
+---
+
+## Introduction
+
+For this assignment, I will be analyzing Spotify's recommender system. Spotify is a music and general audio streaming platform that contains many services to recommend music, through automatic mixes, updating day lists, and an AI DJ that will select various genres to listen to. Many people consume music differently, so making a generalized algorithm that retains the most customer attention as well as improving the experience of listening is critical.
+
+For this exercise, I will be using online resources as well as inferred information from using the application, and present some of my own ideas on how this reccommender system could grow or improve.
+
+## Scenario Design
+
+To first understand the design principle of the reccommender system, three questions must be answered:
+
+1.  Who are your target users?
+2.  What are their key goals?
+3.  How can you help them accomplish these goals?
+
+Within this scenario design questionnaire, we are looking to answer this for both the business and the customer, where we can then mentally generate a Venn diagram of where these things overlap, and use this as our design principle. In Spotify's case, I would Identify 3 groups of people for the design principle: Consumers, Creators, and the Business. See below for the matrix of these 3 groups and the key scenario design questions.
+
+| Focus Audience | Who are your target users? | What are their key goals? | How can you help them accomplish those goals? |
+|-------------|--|------------------------------|----------------------------------|
+| Customer | Anyone who consumes audio-focused digital media (music, music videos, podcasts, audiobooks, etc) | To consume content they are interested in, communicate with their friends on said content, and find new content that is adjacent to their interests | Create recommender systems that provide content that is just the right mix of familiar and new, to continue serving ones core interests while also presenting them with new options |
+| Creator | Anyone who creates audio-focused digital media (music, music videos, podcasts, audiobooks, etc) | To present their content to familiar and new users, and to use the platform for marketing and presentation of art | Provide a platform to release their content, and to provide recommender systems that help them expand their reach. |
+| Business | Anyone who serves the business, the business itself, and the investors of the business. | To ensure that audiences choose Spotify as their core resource for sharing digital audio-focused content, and to create systems that expand | Continue developing new ways to present content to consumers, continue developing algorithms that allow consumers to expand their horizon and creators to expand their reach. |
+
+As you can see, all 3 subjects have a shared goal: consume more content. With music and audio-focused media, like with other forms of media, consumers like to hunt for new content that is adjacent to content they are already interested in, and they wish to share it with others that feel the same ways as them. Creators use the platforms to reach more people who may identify with their work, which can then serve as a pipeline for these consumers to watch music videos, anticipate future releases, buy merchandise, and see them live. The business of Spotify wishes for their company to look appealing from the business perspective of these audio-focused media distributors. They want to say to the businesses looking to advertise or distribute that their application has helped people discover new content, and allows for creators to maintain and grow user bases better than other applications.
+
+With these core principles in mind, we can then move towards developing recommender systems that meet these criteria.
+
+## Recommender System
+
+Per an article directly from Spotify's Safety and Privacy Center, their algorithm "pair\[s\] data insights with deep content knowledge and cultural expertise to program content that will resonate with fans around the world". They also state that they work to improve their systems continuously to understand how users tastes change over time (1).
+
+They name their core recommender weights as your "taste profile", information learned about you, trends, information about the content, and listener safety. Within these systems, a decent picture can be painted about the content you are interested in consuming. They also mention later in the article that artists and labels have an opportunity to promote their music through discovery mode, in which artists are charged commission to have their music weighted more heavily in the recommender systems. There are also options built within the user listening experience that allow the user to steer their algorithm with dislikes, taste profile customization, and other items.
+
+## A Deeper Dive - daylist Recommender
+
+Another area of Spotify's recommender system I want to observe is their daylist playlist, which is an personalized auto-generated playlist of different music genres that changes throughout the day to try to meet your current energy, while also using eclectic terms to describe the music. I've always personally thought the introduction of this playlist was interesting, and I want to observe it from the lens of scenario design. Lets look at my current album - "freak folk slacker rock monday morning". Within it is a mix of songs from bands that i have listened to throughout the years - Geese, Ween, Elliot Smith, Neutral Milk Hotel - accompanied by artists whose discographies I have not explored - Wilco, Car Seat Headrest, Black Country, New Road.
+
+What I believe this playlist is doing is trying to take the existing recommender architectures and evolve them to a more dynamic setup. Whereas the general recommender systems create daily mixes that generally put genres into buckets, this system tries to use other data gathered from your listening patterns to assemble what it thinks your energy would be for the day, potentially alongside weather and locational data. This recommender system looks at music not just as a byproduct of your listening habits, but also the place in which it holds in one's general sensory experience.
+
+Another item I think is significant about this playlist is the title. The titles usually are a weird blend of words that attempt to describe the vibe of the music being presented, and in a way I feel this is Spotify training some form of tokenization of their music in order to develop more conversational recommender systems. Look at wine as an example - when appreciating wines they say no descriptor is a bad descriptor. You can say a wine tastes like bubblegum or has a rubbery aftertaste, and while those thoughts could be entirely subjective, in aggregate they allow for a link to be drawn between the sensory experience of wine and our ability to communicate it. I feel that these titles serve a similar purpose and help to build out the sensory connections for Spotify to use to add more depth to their recommender systems.
+
+## Suggestions From a Listener
+
+When thinking about how these recommender systems could improve, I am drawn to the philosophy that these digital systems are constantly trying to emulate the real world. In a space so focused on audio and music, I believe this rings even more true. Most people, when asked about their favorite music experience, would call to a time where they saw someone perform live, or where they were at a bar and a certain song played after their team's big win, or a moment in a TV show that cements a new meaning for a song. We see through these examples that music is a smaller part to a larger lived experience, and for recommender systems to improve and stick more, they need to be connected more to the human experience.
+
+To approach this, I feel that Spotify should leverage their position as a social network more. They should put more effort into designing systems that allow people to collaborate and listen to albums together, or to approach recommender systems together, as that added layer of human connection can allow more sticking points for impactful listening moments. Spotify already does this in a way with its blend playlists, where you mix your music taste with a friends and it auto generates a new playlist. I feel that the idea can be expanded upon and it can be used as a more textured method of data collection than just relying on a single users algorithmic weights.
+
+Lastly, I feel that Spotify needs to connect more with the platforms that music is being shared and experienced today. While Spotify does present information on where to see your favorite artists if they are on tour, it doesn't seem to engage more than that. It doesn't make much of an effort to build up what events could be going on around you or make you alerted when someone you listen to frequently is having a show near you. I feel that there could be integration here in terms of helping these agencies sell more tickets to live shows which in turn draws listeners to continue chasing what they felt at the live show.
+
+A more pie-in-the-sky continuation of that thought focuses on the emerging growth of DJ culture. Many more people are getting into DJ sets, both in terms of listening and creating, and DJ'ing at its core is presenting your music taste to a larger group of people. It is done so in a clever way where music seamlessly transitions from one artist to another, and a specific DJ's finished work is referred to as their "DJ set". Spotify currently has a beta for mixed playlists where different songs transition directly into others, but I think it would be interesting for them to expand on this idea and present artist-created mixed playlists that allow for a more human means of interacting with and sharing the medium. These DJ sets could become data treasure troves for how someones taste could change, as you could create a "most replayed" factor similar to how youtube does their videos, which can then drive understanding of what big moments people are interested in in music, and how to push those outside of the DJ set medium.
+
+## Conclusions
+
+Through this report we can see how Spotify follows the scenario design principles to build out their systems, which things they could be doing better, and how they are already focusing on improving these items.
+
+The principles that Spotify uses to build their systems are very synonymous across many digital media organizations, in that they are looking to maximize attention in order to look more presentable for distributors and consumers. The interesting part of Spotify's world is that they are dealing with primarily music, which would be described by many as an art form. In order to find ways to define that art, they use unique recommender systems such as the daylist product so that they can add more texture to their consumer data. Also, they are constantly looking for ways to connect their application to the real world consumption and appreciation of music through experimental mixed playlists and other tools.
